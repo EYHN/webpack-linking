@@ -1,0 +1,13 @@
+{
+  "name": "webpack-linking",
+  "version": "1.0.0",
+  "main": "lib/index.js",
+  "repository": "https://github.com/EYHN/webpack-linking.git",
+  "author": "eyhn <cneyhn@gmail.com>",
+  "license": "GPL-3.O",
+  "dependencies": {
+    "@types/webpack": "^4.4.9",
+    "typescript": "^3.0.1",
+    "webpack": "^4.16.5"
+  }
+}
