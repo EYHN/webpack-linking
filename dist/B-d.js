@@ -1,14 +1,5 @@
-(function webpackUniversalModuleDefinition(root, factory) {
-	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory();
-	else if(typeof define === 'function' && define.amd)
-		define([], factory);
-	else {
-		var a = factory();
-		for(var i in a) (typeof exports === 'object' ? exports : root)[i] = a[i];
-	}
-})(window, function() {
-return /******/ (function(modules) { // webpackBootstrap
+module.exports =
+/******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
 /******/
@@ -91,22 +82,21 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = "./src/test/examples/a.js");
+/******/ 	return __webpack_require__(__webpack_require__.s = "./src/test/examples/d.js");
 /******/ })
 /************************************************************************/
 /******/ ({
 
-/***/ "./src/test/examples/a.js":
+/***/ "./src/test/examples/d.js":
 /*!********************************!*\
-  !*** ./src/test/examples/a.js ***!
+  !*** ./src/test/examples/d.js ***!
   \********************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-console.log('hello a');
+console.log('hello d');
 
 /***/ })
 
 /******/ });
-});
-//# sourceMappingURL=main.js.map
+//# sourceMappingURL=B-d.js.map
