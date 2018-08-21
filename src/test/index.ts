@@ -23,8 +23,7 @@ const UnitA = new Unit('a', {
   output: {
     filename: "[name].js",
     libraryTarget: "umd",
-    path: path.join(__dirname,'dist'),
-    devtoolModuleFilenameTemplate: "a://[namespace]/[resource-path]?[loaders]"
+    path: path.join(__dirname,'dist')
   }
 });
 
@@ -32,4 +31,4 @@ UnitB.link(UnitD);
 
 UnitA.link(UnitB);
 
-UnitA.build();
+UnitA.build().catch(console.error);

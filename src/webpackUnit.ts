@@ -2,6 +2,21 @@ import * as webpack from 'webpack';
 import merge from './utils/merge';
 import randomString from './utils/randomString';
 import * as path from 'path';
+import * as url from 'url';
+
+interface DevtoolModuleFilenameTemplateInfo {
+  identifier: string;
+  shortIdentifier: string;
+  resource: any;
+  resourcePath: string;
+  absoluteResourcePath: string;
+  allLoaders: any[];
+  loaders: any[];
+  query: string;
+  moduleId: string;
+  namespace: string;
+  hash: string;
+}
 
 export default class webpackUnit {
   name: string = 'unit-' + randomString(12);
@@ -70,9 +85,26 @@ export default class webpackUnit {
           {
             test: /\.js$/,
             use: ['source-map-loader'],
+            include: [...Object.values(childrenEntry || {})],
             enforce: 'pre'
           }
         ]
+      },
+      output: {
+        devtoolModuleFilenameTemplate: (info: DevtoolModuleFilenameTemplateInfo) => {
+          const resourcePath = info.resourcePath;
+          if (url.parse(resourcePath).protocol) {
+            return resourcePath;
+          } else {
+            return url.format({
+              protocol: this.name,
+              hostname: info.namespace,
+              pathname: info.resourcePath,
+              query: info.loaders,
+              slashes: true
+            });
+          }
+        }
       }
     };
     if (injectChildren) {
@@ -92,7 +124,7 @@ export default class webpackUnit {
         topOutputPath = topConfig.output.path || '';
         topOutputPublicPath = topConfig.output.publicPath || '';
       }
-      configuration.output = {};
+      if (!configuration.output) {configuration.output = {};}
       configuration.output.libraryTarget = 'commonjs2';
       configuration.output.filename = ((chunkData: any) => {
         return chunkData.chunk.name === 'main' ? 'index.js': '[name].js';
@@ -102,7 +134,6 @@ export default class webpackUnit {
       let publicPath = path.join(topOutputPublicPath, relativePath).replace('\\', '/');
       if (!publicPath.endsWith('/')) publicPath += '/';
       configuration.output.publicPath = publicPath;
-      configuration.output.devtoolModuleFilenameTemplate = `${this.name}://[namespace]/[resource-path]?[loaders]`;
     }
     return merge(this.config, configuration);
   }
