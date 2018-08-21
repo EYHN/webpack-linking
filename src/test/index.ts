@@ -1,14 +1,14 @@
 import { Unit } from '..';
 import * as path from 'path';
 
-const UnitB = new Unit('B', {
+const UnitB = new Unit('b', {
   mode: "development",
-  entry: {b: path.join(__dirname,'./examples/b.js'), d: path.join(__dirname,'./examples/d.js')},
+  entry: path.join(__dirname,'./examples/b.js'),
   target: 'web',
   devtool: "source-map"
 });
 
-const UnitA = new Unit('A', {
+const UnitA = new Unit('a', {
   mode: "development",
   entry: path.join(__dirname,'./examples/a.js'),
   target: 'web',
@@ -17,10 +17,11 @@ const UnitA = new Unit('A', {
     filename: "[name].js",
     libraryTarget: "umd",
     path: path.join(__dirname,'dist'),
+    publicPath: '/',
     devtoolModuleFilenameTemplate: "a://[namespace]/[resource-path]?[loaders]"
   }
 });
 
 UnitA.link(UnitB);
 
-UnitA.build().catch(console.error);
+UnitA.build();

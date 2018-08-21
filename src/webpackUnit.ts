@@ -32,12 +32,16 @@ export default class webpackUnit {
   }
 
   async build() {
-    const children = await Promise.all(this.children.map(child => child.build()));
-    for (const child of children) {
-      console.log(child.toJson())
-    }
+    const entrypoints = await Promise.all(this.children.map(async child => {
+      const stats = await child.build();
+      return {
+        [child.name]: stats.compilation.outputOptions.path as string
+      };
+    }));
+    const entry = Object.assign({}, ...entrypoints);
     return new Promise<webpack.Stats>((resolve, reject) => {
-      webpack(this.buildConfig()).run((err, stats) => {
+      console.log(this.buildConfig(true, entry))
+      webpack(this.buildConfig(true, entry)).run((err, stats) => {
         if (err || stats.hasErrors()) {
           reject(stats.toJson());
         }
@@ -52,14 +56,15 @@ export default class webpackUnit {
   }
 
   buildConfig(injectChildren: boolean = false, childrenEntry?: {[key: string]: string}): webpack.Configuration {
-    const configuration: webpack.Configuration = {
-      externals: [...this.exports, ...(this.children.map(child => child.name))]
-    }
+    const configuration: webpack.Configuration = {}
     if (injectChildren) {
       configuration.resolve = {};
       configuration.resolve.alias = {
         ...childrenEntry
-      }
+      };
+      configuration.externals = [...this.exports]
+    } else {
+      configuration.externals = [...this.exports, ...(this.children.map(child => child.name))]
     }
     if (this.depth !== 1) {
       configuration.output = {};
