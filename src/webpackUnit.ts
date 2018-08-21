@@ -1,6 +1,7 @@
 import * as webpack from 'webpack';
 import merge from './utils/merge';
 import randomString from './utils/randomString';
+import * as path from 'path';
 
 export default class webpackUnit {
   name: string = 'unit-' + randomString(12);
@@ -14,6 +15,14 @@ export default class webpackUnit {
       return 1;
     }
     return this.parent.depth + 1;
+  }
+
+  get topUnit(): webpackUnit {
+    if (!this.parent) {
+      return this;
+    } else {
+      return this.parent.topUnit;
+    }
   }
 
   get exports(): string[] {
@@ -40,7 +49,6 @@ export default class webpackUnit {
     }));
     const entry = Object.assign({}, ...entrypoints);
     return new Promise<webpack.Stats>((resolve, reject) => {
-      console.log(this.buildConfig(true, entry))
       webpack(this.buildConfig(true, entry)).run((err, stats) => {
         if (err || stats.hasErrors()) {
           reject(stats.toJson());
@@ -56,7 +64,17 @@ export default class webpackUnit {
   }
 
   buildConfig(injectChildren: boolean = false, childrenEntry?: {[key: string]: string}): webpack.Configuration {
-    const configuration: webpack.Configuration = {}
+    const configuration: webpack.Configuration = {
+      module: {
+        rules: [
+          {
+            test: /\.js$/,
+            use: ['source-map-loader'],
+            enforce: 'pre'
+          }
+        ]
+      }
+    };
     if (injectChildren) {
       configuration.resolve = {};
       configuration.resolve.alias = {
@@ -66,13 +84,25 @@ export default class webpackUnit {
     } else {
       configuration.externals = [...this.exports, ...(this.children.map(child => child.name))]
     }
-    if (this.depth !== 1) {
+    if (this.parent) {
+      const topConfig = this.topUnit.buildConfig();
+      let topOutputPath: string = '';
+      let topOutputPublicPath: string = '';
+      if (topConfig.output) {
+        topOutputPath = topConfig.output.path || '';
+        topOutputPublicPath = topConfig.output.publicPath || '';
+      }
       configuration.output = {};
       configuration.output.libraryTarget = 'commonjs2';
       configuration.output.filename = ((chunkData: any) => {
         return chunkData.chunk.name === 'main' ? 'index.js': '[name].js';
       }) as any;
-      configuration.output.devtoolModuleFilenameTemplate = `unit${this.depth}://[namespace]/[resource-path]?[loaders]`
+      configuration.output.path = path.join(topOutputPath, `./modules/${this.name}/`);
+      const relativePath = path.relative(topOutputPath, configuration.output.path);
+      let publicPath = path.join(topOutputPublicPath, relativePath).replace('\\', '/');
+      if (!publicPath.endsWith('/')) publicPath += '/';
+      configuration.output.publicPath = publicPath;
+      configuration.output.devtoolModuleFilenameTemplate = `${this.name}://[namespace]/[resource-path]?[loaders]`;
     }
     return merge(this.config, configuration);
   }
