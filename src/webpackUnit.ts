@@ -3,6 +3,7 @@ import merge from './utils/merge';
 import randomString from './utils/randomString';
 import * as path from 'path';
 import * as url from 'url';
+import * as fs from 'fs';
 
 interface DevtoolModuleFilenameTemplateInfo {
   identifier: string;
@@ -16,6 +17,26 @@ interface DevtoolModuleFilenameTemplateInfo {
   moduleId: string;
   namespace: string;
   hash: string;
+}
+
+class Watching {
+  webpackWatching: webpack.Watching;
+  children: Watching[] = [];
+  constructor(Watching: webpack.Watching, children: Watching[] = []) {
+    this.webpackWatching = Watching;
+    this.children = children;
+  }
+  close(): Promise<void> {
+    return Promise.all([
+      ...this.children.map(child => child.close()),
+      new Promise<void>((resolve) => {
+        this.webpackWatching.close(resolve);
+      })
+    ]).then(() => void 0);
+  }
+  invalidate() {
+    this.children.forEach(child => child.invalidate());
+  }
 }
 
 export default class webpackUnit {
@@ -63,7 +84,7 @@ export default class webpackUnit {
       };
     }));
     const entry = Object.assign({}, ...entrypoints);
-    return new Promise<webpack.Stats>((resolve, reject) => {
+    const stats = await new Promise<webpack.Stats>((resolve, reject) => {
       webpack(this.buildConfig(true, entry)).run((err, stats) => {
         if (err || stats.hasErrors()) {
           reject(stats.toJson());
@@ -71,6 +92,20 @@ export default class webpackUnit {
         resolve(stats);
       });
     });
+    return stats;
+  }
+
+  watch(watchOptions: webpack.ICompiler.WatchOptions, handler: webpack.ICompiler.Handler): Watching {
+    const childrenWatching = this.children.map(child => child.watch(watchOptions, handler));
+    let firstBuild = true;
+    const watching = new Watching(webpack(this.buildConfig()).watch(watchOptions, (err, stat) => {
+      handler(err, stat);
+      if (firstBuild) {
+        firstBuild = false;
+        watching.close();
+      }
+    }), childrenWatching);
+    return watching;
   }
 
   link(target: webpackUnit) {
@@ -131,7 +166,7 @@ export default class webpackUnit {
       }) as any;
       configuration.output.path = path.join(topOutputPath, `./modules/${this.name}/`);
       const relativePath = path.relative(topOutputPath, configuration.output.path);
-      let publicPath = path.join(topOutputPublicPath, relativePath).replace('\\', '/');
+      let publicPath = path.posix.join(topOutputPublicPath, relativePath);
       if (!publicPath.endsWith('/')) publicPath += '/';
       configuration.output.publicPath = publicPath;
     }

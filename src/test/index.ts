@@ -27,8 +27,10 @@ const UnitA = new Unit('a', {
   }
 });
 
-UnitB.link(UnitD);
-
 UnitA.link(UnitB);
 
-UnitA.build().catch(console.error);
+UnitB.link(UnitD);
+
+UnitA.build().catch((err) => {
+  console.error(err.stack || err)
+});
