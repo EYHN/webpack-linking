@@ -3,7 +3,7 @@ import merge from './utils/merge';
 import randomString from './utils/randomString';
 import * as path from 'path';
 import * as url from 'url';
-import * as fs from 'fs';
+import wait from './utils/wait';
 
 interface DevtoolModuleFilenameTemplateInfo {
   identifier: string;
@@ -95,17 +95,27 @@ export default class webpackUnit {
     return stats;
   }
 
-  watch(watchOptions: webpack.ICompiler.WatchOptions, handler: webpack.ICompiler.Handler): Watching {
-    const childrenWatching = this.children.map(child => child.watch(watchOptions, handler));
+  async watch(watchOptions: webpack.ICompiler.WatchOptions, handler: webpack.ICompiler.Handler): Promise<Watching> {
+    const entry: {[key: string]: string} = {};
+    const childrenWatching = await Promise.all(this.children.map(child => child.watch(watchOptions, (err, stats) => {
+      entry[child.name] = stats.compilation.outputOptions.path;
+      handler(err,stats);
+    })));
+    await wait(1);
     let firstBuild = true;
-    const watching = new Watching(webpack(this.buildConfig()).watch(watchOptions, (err, stat) => {
-      handler(err, stat);
-      if (firstBuild) {
-        firstBuild = false;
-        watching.close();
-      }
-    }), childrenWatching);
-    return watching;
+    return new Promise<Watching>((resolve, reject) => {
+      const watching = new Watching(webpack(this.buildConfig(true, entry)).watch(watchOptions, (err, stats) => {
+        handler(err, stats);
+        if (firstBuild) {
+          firstBuild = false;
+          if (err || stats.hasErrors()) {
+            watching.close();
+            reject(stats.toJson())
+          }
+          resolve(watching);
+        }
+      }), childrenWatching);
+    });
   }
 
   link(target: webpackUnit) {
